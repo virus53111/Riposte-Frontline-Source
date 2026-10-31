@@ -78,7 +78,7 @@ for path in paths:
                           '--xp: #FF842C; --acc: var(--xp); --acc-hi: #FFAD67; --acc-ink: #180B04; --acc-soft: rgba(255,132,44,.14); --acc-line: rgba(255,132,44,.55);')
         data=data.replace('<meta name="google-site-verification" content="gIuJU_6bUl6fEssvTUEoHr2NDUONA5ir-w5quer8q3c">','')
         data=data.replace('<meta name="theme-color" content="#0E110D">','<meta name="theme-color" content="#0A0C11">')
-        data=data.replace('<title>IRON SHIFT, FPS gratuit dans le navigateur</title>','<title>IRON SHIFT — Tactical Shooter</title>')
+        data=data.replace('<title>IRON SHIFT, FPS gratuit dans le navigateur</title>','<title>IRON SHIFT, Tactical Shooter</title>')
         data=data.replace('<meta property="og:site_name" content="IRON SHIFT">','<meta property="og:site_name" content="IRON SHIFT">')
         # Preview disclaimer: not affiliated with the original author.
         data=data.replace('</body>',
