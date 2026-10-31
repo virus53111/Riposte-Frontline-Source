@@ -1,0 +1,26 @@
+name: IRON SHIFT account preview CI
+on:
+  push:
+    branches: [iron-shift-accounts-preview]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate server syntax
+        run: node --check game-server/server.js
+      - name: Assemble full game and beta server image
+        run: docker build -f Dockerfile.accounts -t iron-shift-accounts:ci .
+      - name: Smoke-test HTTP API and original game
+        run: |
+          docker run --detach --rm --name iron-shift-ci -p 127.0.0.1:18080:10000 iron-shift-accounts:ci
+          trap 'docker stop iron-shift-ci || true' EXIT
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:18080/health && break || sleep 2; done
+          curl -fsS http://127.0.0.1:18080/ | grep -q 'IRON SHIFT'
+          curl -fsS http://127.0.0.1:18080/manifest.webmanifest | grep -q 'IRON SHIFT'
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:18080/api/health)" = 503
+          echo "Static game and account API setup mode: PASS"
