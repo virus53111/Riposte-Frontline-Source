@@ -103,14 +103,14 @@ async function snapshot(u){
  return {user:publicUser(u),level:levelOf(u.xp),stats:ag.rows[0],recent:ms.rows.map(m=>({map:m.map,mode:m.mode,result:m.result,online:m.online,duration:m.duration,kills:m.kills,deaths:m.deaths,xp:m.xp,played_at:m.played_at}))};
 }
 const credentials=req=>({username:String(req.body?.username||req.body?.login||'').trim().toLowerCase(),password:req.body?.password});
-function validPassword(p){return typeof p==='string'&&p.length>=10&&p.length<=128;}
+function validPassword(p){return typeof p==='string'&&p.length>=8&&p.length<=128;}
 function validUsername(u){return /^[a-z0-9_]{3,16}$/.test(u);}
 app.get('/api/health',async(req,res)=>res.status(ready?200:503).json({status:ready?'ready':'setup_required',dbConnected:ready,feature:'beta_accounts',money:false}));
 app.get('/api/me',route(async(req,res)=>{const u=await auth(req);res.json(u?await snapshot(u):{user:null,level:null,stats:null,recent:[]});}));
 app.post('/api/register',route(async(req,res)=>{
  const {username,password}=credentials(req);
  if(!req.body?.accept)return err(res,422,'Accept the terms before creating an account');
- if(!validUsername(username)||!validPassword(password))return err(res,422,'Username: 3-16 letters/numbers/_; password: 10-128 characters');
+ if(!validUsername(username)||!validPassword(password))return err(res,422,'Username: 3-16 letters/numbers/_; password: 8-128 characters');
  const pass=await passwordHash(password),code=recoveryCode(),rec=await passwordHash(code);
  const result=await pool.query('INSERT INTO beta_users(username,display_name,password_hash,recovery_hash) VALUES($1,$2,$3,$4) RETURNING *',[username,username,pass,rec]);
  const u=result.rows[0];await issueSession(res,u.id);res.status(201).json({...await snapshot(u),recoveryCode:code});
