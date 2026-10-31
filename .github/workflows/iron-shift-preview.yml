@@ -1,0 +1,39 @@
+name: IRON SHIFT brand preview build
+on:
+  push:
+    branches: [iron-shift-preview]
+  workflow_dispatch:
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install image and audio build tools
+        run: python -m pip install --disable-pip-version-check Pillow imageio-ffmpeg
+      - name: Replace licensed music with CC0 recordings
+        run: python tools/cc0_soundtrack.py
+      - name: Apply IRON SHIFT branding and icon set
+        run: python tools/iron_shift_branding.py
+      - name: Build the original game
+        run: |
+          python build.py
+          cp dist/riposte-frontline.html dist/index.html
+          printf 'User-agent: *\nDisallow: /\n' > dist/robots.txt
+          rm -f dist/sitemap.xml
+          test -s dist/index.html
+          test -s dist/manifest.webmanifest
+          test -s dist/favicon.ico
+          grep -q 'IRON SHIFT' dist/index.html
+          grep -q 'IRON SHIFT' dist/manifest.webmanifest
+      - name: Upload IRON SHIFT test game (not for commercial release)
+        uses: actions/upload-artifact@v4
+        with:
+          name: iron-shift-test-game
+          path: dist/
+          retention-days: 14
