@@ -9,6 +9,19 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: beta_ci_only
+          POSTGRES_DB: ironshift_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d ironshift_ci"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v4
       - name: Validate server syntax
@@ -24,3 +37,11 @@ jobs:
           curl -fsS http://127.0.0.1:18080/manifest.webmanifest | grep -q 'IRON SHIFT'
           test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:18080/api/health)" = 503
           echo "Static game and account API setup mode: PASS"
+      - name: Integration test with disposable PostgreSQL
+        run: |
+          docker run --detach --rm --name iron-shift-db-ci --network host \
+            -e DATABASE_URL=postgresql://postgres:beta_ci_only@127.0.0.1:5432/ironshift_ci \
+            -e NODE_ENV=production \
+            iron-shift-accounts:ci
+          trap 'docker stop iron-shift-db-ci || true' EXIT
+          node game-server/test/integration.mjs
