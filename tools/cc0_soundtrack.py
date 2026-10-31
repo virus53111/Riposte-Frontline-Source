@@ -2,17 +2,22 @@
 """Replace only the four restricted music cues with documented CC0 audio.
 
 No changes to gameplay, 3D assets, original source scripts, or the main-branch preview.
-Requires ffmpeg and ffprobe (preinstalled on GitHub Actions ubuntu runners).
+Requires ffmpeg (or the imageio-ffmpeg Python package).
 Run from repository root: python3 tools/cc0_soundtrack.py && python3 build.py
 """
 import array
 import hashlib
 import json
 from pathlib import Path
+import shutil
 import subprocess
 import urllib.request
 
 ROOT = Path(__file__).resolve().parent.parent
+FFMPEG = shutil.which("ffmpeg")
+if not FFMPEG:
+    from imageio_ffmpeg import get_ffmpeg_exe
+    FFMPEG = get_ffmpeg_exe()
 TRACKS = (
     {
         "name": "menu",
@@ -63,25 +68,17 @@ def download(url):
     return data
 
 
-def duration(path):
-    p = run(
-        ["ffprobe", "-v", "error", "-show_entries", "format=duration",
-         "-of", "default=noprint_wrappers=1:nokey=1", str(path)],
-        capture_output=True, text=True,
-    )
-    return float(p.stdout.strip())
-
-
-def peak_index(path, seconds=2):
-    """Peak sample at 48 kHz for the game's existing sample-alignment metadata."""
-    cmd = ["ffmpeg", "-nostdin", "-v", "error", "-i", str(path),
-           "-t", str(seconds), "-ac", "1", "-ar", "48000", "-f", "s16le", "-"]
+def pcm_stats(path):
+    """Decoded PCM duration and the first two seconds' peak at 48 kHz."""
+    cmd = [FFMPEG, "-nostdin", "-v", "error", "-i", str(path),
+           "-ac", "1", "-ar", "48000", "-f", "s16le", "-"]
     raw = run(cmd, capture_output=True).stdout
     pcm = array.array("h")
     pcm.frombytes(raw[:len(raw) - len(raw) % 2])
     if not pcm:
-        return 0
-    return max(range(len(pcm)), key=lambda i: abs(pcm[i]))
+        raise ValueError(f"Decoded audio empty: {path}")
+    head = pcm[:min(len(pcm), 2 * 48000)]
+    return len(pcm) / 48000, max(range(len(head)), key=lambda i: abs(head[i]))
 
 
 def main():
@@ -96,7 +93,7 @@ def main():
             output = ROOT / item["destination"]
             output.parent.mkdir(parents=True, exist_ok=True)
             cmd = [
-                "ffmpeg", "-nostdin", "-y", "-v", "error",
+                FFMPEG, "-nostdin", "-y", "-v", "error",
                 "-i", str(source), "-map_metadata", "-1",
                 "-ar", "48000", "-ac", "2", "-c:a", "libmp3lame",
                 "-q:a", "4",
@@ -108,20 +105,21 @@ def main():
                 cmd.extend(["-af", f"afade=t=out:st={max(0, cap-0.5)}:d=0.5"])
             cmd.append(str(output))
             run(cmd)
-            seconds = duration(output)
+            seconds, peak = pcm_stats(output) if item["name"] != "menu" else (None, 0)
+            if seconds is None:
+                seconds = 30.0  # Menu cue is a loop; no decoded PCM needed for metadata
             if seconds < 0.2:
                 raise ValueError(f"Invalid converted audio: {output}")
             digest = hashlib.sha256(output.read_bytes()).hexdigest()[:16]
             print(f"{item['name']}: {output.relative_to(ROOT)} {seconds:.2f}s sha256:{digest}", flush=True)
             if item["name"] in ("victory", "defeat"):
                 sid = "m_" + item["name"]
-                meta["s"][sid] = [round(seconds * 48000), peak_index(output)]
+                meta["s"][sid] = [round(seconds * 48000), peak]
         (ROOT / "assets/sfx/fin/meta.json").write_text(
             json.dumps(meta, separators=(",", ":")) + "\n", encoding="utf-8"
         )
         print("All four original non-commercial music cues have been replaced in this build.", flush=True)
     finally:
-        import shutil
         shutil.rmtree(temp, ignore_errors=True)
 
 
