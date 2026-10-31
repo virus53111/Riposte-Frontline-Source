@@ -1,0 +1,28 @@
+name: CC0 audio preview build
+on:
+  push:
+    branches: [cc0-soundtrack-preview]
+  workflow_dispatch:
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare CC0 replacement music
+        run: python3 tools/cc0_soundtrack.py
+      - name: Build original game with new music
+        run: |
+          python3 build.py
+          cp dist/riposte-frontline.html dist/index.html
+          test -s dist/index.html
+          test -s dist/menu-theme.mp3
+          echo 'Build completed'
+      - name: Upload private testing build
+        uses: actions/upload-artifact@v4
+        with:
+          name: riposte-cc0-music-preview
+          path: dist/
+          retention-days: 14
