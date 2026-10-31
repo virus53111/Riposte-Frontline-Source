@@ -84,11 +84,16 @@ for path in paths:
         data=data.replace('</body>',
           '<aside style="position:fixed;bottom:3px;left:9px;z-index:99;pointer-events:none;'
           'font:11px Arial,sans-serif;color:#aaa8;letter-spacing:.02em">Non-commercial preview · Based on MIT-licensed Riposte: Frontline source</aside>\n</body>')
+    if path.name=="09t-social.js":
+        data=data.replace("b.classList.toggle('hidden', !on);", "b.classList.toggle('hidden', !on || id !== 'rankBtn');")
+    if path.name=="09k-legal.js":
+        data=data.replace("[région de la base Neon : Francfort recommandée]", "Render Postgres, Frankfurt (temporary beta)")
+        data=data.replace("hébergé par Hetzner, en Allemagne", "connexion directe entre navigateurs, WebRTC")
     if data!=path.read_text(encoding="utf-8"):path.write_text(data,encoding="utf-8")
 
 bp=ROOT/"build.py"
 s=bp.read_text(encoding="utf-8")
-s=s.replace('SITE="https://www.playriposte.com"','SITE="https://iron-shift-preview.onrender.com"')
+s=s.replace('SITE="https://www.playriposte.com"','SITE="https://iron-shift-accounts-preview.onrender.com"')
 s=s.replace('"name":"Riposte: Frontline","short_name":"Riposte"','"name":"IRON SHIFT","short_name":"IRON SHIFT"')
 s=s.replace('"background_color":"#0E110D","theme_color":"#0E110D"','"background_color":"#0A0C11","theme_color":"#0A0C11"')
 bp.write_text(s,encoding="utf-8")
