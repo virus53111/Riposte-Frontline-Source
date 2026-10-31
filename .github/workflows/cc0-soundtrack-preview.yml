@@ -11,11 +11,16 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install audio encoder
+        run: python -m pip install --disable-pip-version-check imageio-ffmpeg
       - name: Prepare CC0 replacement music
-        run: python3 tools/cc0_soundtrack.py
+        run: python tools/cc0_soundtrack.py
       - name: Build original game with new music
         run: |
-          python3 build.py
+          python build.py
           cp dist/riposte-frontline.html dist/index.html
           test -s dist/index.html
           test -s dist/menu-theme.mp3
